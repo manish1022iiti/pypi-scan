@@ -57,10 +57,15 @@ def compare_metadata(pkg1, pkg2):
     for field in fields_to_compare:
         # Only increment num_identical_fields if the field is not empty
         # and the fields are identical
-        blank_field = pkg1_metadata["info"][field] == ""
-        same_metadata = pkg1_metadata["info"][field] == pkg2_metadata["info"][field]
-        if (not blank_field) and same_metadata:
-            num_identical_fields += 1
+        if "info" in pkg1_metadata and "info" in pkg2_metadata:
+            blank_field = pkg1_metadata["info"][field] == ""
+            same_metadata = pkg1_metadata["info"][field] == pkg2_metadata["info"][field]
+            if (not blank_field) and same_metadata:
+                num_identical_fields += 1
+        else:
+            # If atleast one of the packages does NOT have "info" key in its metadata,
+            # assume something is fishy and conclude all fields are identical
+            num_identical_fields = len(fields_to_compare)
 
     # Categorize risk level based on count of identical fields
     risk_level = "no_risk"
@@ -88,7 +93,10 @@ def create_suspicious_package_dict(
     """
     suspicious_packages = collections.OrderedDict()
 
-    for top_package in top_packages:
+    for i, top_package in enumerate(top_packages):
+        import time
+        st = time.time()
+
         # Check for misspelling attacks
         close_packages = distance_calculations(top_package, all_packages, max_distance)
         # Check for confusion attcks
@@ -100,6 +108,9 @@ def create_suspicious_package_dict(
         homophone_packages = homophone_attack_screen(top_package, all_packages)
 
         suspicious_packages[top_package] = close_packages
+
+        duration = time.time() - st
+        print(f"{i + 1} / {len(top_packages)}: {top_package}, {duration} seconds")
 
     return suspicious_packages
 

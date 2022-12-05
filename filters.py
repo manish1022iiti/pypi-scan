@@ -26,6 +26,16 @@ def filter_by_package_name_len(package_list, min_len=MIN_LEN_PACKAGE_NAME):
     return [pkg for pkg in package_list if len(pkg) >= min_len]
 
 
+def __get_threshold_edit_distance(word_length):
+    if word_length <= 5:
+        return 1
+    if word_length <= 10:
+        return 2
+    if word_length <= 15:
+        return 3
+    return 4
+
+
 def distance_calculations(package_of_interest, all_packages, max_distance=MAX_DISTANCE):
     """Find packages <= defined edit distance and return sorted list.
 
@@ -39,6 +49,11 @@ def distance_calculations(package_of_interest, all_packages, max_distance=MAX_DI
     """
     # Empty list to store similar package names
     similar_package_names = []
+
+    # If the input `max_distance` is 0, determine the appropriate max_distance based on
+    # the length of the package name
+    if max_distance == 0:
+        max_distance = __get_threshold_edit_distance(word_length=len(package_of_interest))
 
     # Loop thru all package names
     for package in all_packages:
@@ -56,6 +71,28 @@ def distance_calculations(package_of_interest, all_packages, max_distance=MAX_DI
 
     # Return alphabetically sorted list of similar package names
     return sorted(similar_package_names)
+
+
+def __get_order_variants(package):
+    import itertools
+
+    words = package.replace("-", "#").replace("_", "#").split("#")
+
+    variants = list()
+
+    if len(words) > 1:
+        w1 = words + ["-"] * (len(words) - 1)
+        w2 = words + ["_"] * (len(words) - 1)
+
+        w1 = list(itertools.permutations(w1))
+        w2 = list(itertools.permutations(w2))
+
+        for v in w1 + w2:
+            s = "".join(v)
+            if s != package:
+                variants.append(s)
+
+    return list(set(variants))
 
 
 def order_attack_screen(package, all_packages):
@@ -78,23 +115,54 @@ def order_attack_screen(package, all_packages):
     # Check if there is only one total dash or underscore
     # TODO: Consider dealing with other cases (e.g. >=2 dashes)
     squatters = []
-    if package.count("-") + package.count("_") == 1:
-        if package.count("-") == 1:
-            pkg_name_list = package.split("-")
-            reversed_name = pkg_name_list[1] + "-" + pkg_name_list[0]
-            switch_symbol = pkg_name_list[0] + "_" + pkg_name_list[1]
-            switch_symbol_reversed = pkg_name_list[1] + "_" + pkg_name_list[0]
-        else:
-            pkg_name_list = package.split("_")
-            reversed_name = pkg_name_list[1] + "_" + pkg_name_list[0]
-            switch_symbol = pkg_name_list[0] + "-" + pkg_name_list[1]
-            switch_symbol_reversed = pkg_name_list[1] + "-" + pkg_name_list[0]
-        # Check if each attack is contained in the full package list
-        for attack in [reversed_name, switch_symbol, switch_symbol_reversed]:
-            if attack in all_packages:
+    variants = __get_order_variants(package=package)
+    if variants:
+        # Check if each variant is contained in the full package list
+        set_all_packages = set(all_packages)
+        for attack in variants:
+            if attack in set_all_packages:
                 squatters.append(attack)
 
     return squatters
+
+
+# def order_attack_screen(package, all_packages):
+#     """Find packages that prey on user confusion about order.
+#
+#     This screen checks for attacks that prey on user confusion
+#     about word order. For instance, python-nmap vs nmap-python.
+#     The edit distance is very high, but the conceptual distance is
+#     close. This function currently identifies only packages that
+#     capitalize on user confusion about  word order when words are
+#     separated by dashes or underscores.
+#
+#     Args:
+#         package (str): package name on which to perform comparison
+#         all_packages (list): list of all package names
+#
+#     Returns:
+#         list: potential typosquatting packages
+#     """
+#     # Check if there is only one total dash or underscore
+#     # TODO: Consider dealing with other cases (e.g. >=2 dashes)
+#     squatters = []
+#     if package.count("-") + package.count("_") == 1:
+#         if package.count("-") == 1:
+#             pkg_name_list = package.split("-")
+#             reversed_name = pkg_name_list[1] + "-" + pkg_name_list[0]
+#             switch_symbol = pkg_name_list[0] + "_" + pkg_name_list[1]
+#             switch_symbol_reversed = pkg_name_list[1] + "_" + pkg_name_list[0]
+#         else:
+#             pkg_name_list = package.split("_")
+#             reversed_name = pkg_name_list[1] + "_" + pkg_name_list[0]
+#             switch_symbol = pkg_name_list[0] + "-" + pkg_name_list[1]
+#             switch_symbol_reversed = pkg_name_list[1] + "-" + pkg_name_list[0]
+#         # Check if each attack is contained in the full package list
+#         for attack in [reversed_name, switch_symbol, switch_symbol_reversed]:
+#             if attack in all_packages:
+#                 squatters.append(attack)
+#
+#     return squatters
 
 
 def homophone_attack_screen(package_of_interest, all_packages):

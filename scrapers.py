@@ -32,6 +32,14 @@ def get_all_packages(page="https://pypi.org/simple/"):
     """
     # Retrieve package name listing data from pypy
     try:
+        import pickle
+        with open("temp/all_packages_20221203.pickle", "rb") as f:
+            package_names = pickle.load(f)
+        return package_names
+    except:
+        pass
+
+    try:
         pypi_package_page = requests.get(page)
     except requests.exceptions.ConnectionError as e:
         print("Internet connection issue. Check connection")

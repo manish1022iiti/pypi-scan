@@ -37,6 +37,7 @@ import argparse
 import sys
 import textwrap
 
+import constants
 from porcelain import mod_squatters, names_to_defend, top_mods, scan_recent
 
 
@@ -59,7 +60,7 @@ def parse_args():
         "-e",
         "--edit_distance",
         help="Maximum edit distance to check.",
-        default=1,  # Set default to 1
+        default=constants.MAX_DISTANCE,  # Set default to 1
         type=int,  # Convert argument input to integer
     )
     parser.add_argument(
@@ -152,3 +153,13 @@ if __name__ == "__main__":
             )
         )
         sys.exit(0)
+
+
+def test(flag):
+    if flag:
+        # mod_squatters("googleapis-common-protos", 7)
+        top_mods(0, 5, 5, False)
+        # names_to_defend("pandas")
+
+
+# test(1)
