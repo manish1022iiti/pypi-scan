@@ -179,10 +179,6 @@ please add corresponding tests.
 
 ## Needed Improvements and Potential Extensions
 
-- Check for forms of typosquatting other than "fat finger" attacks (open-cv
-  vs. open-vc) and and order attacks (open-cv vs. cv-open). For instance,
-  what about when there are real words that are joined and the attackers
-  add a dash or underscore (coolpkg vs. cool-pkg)?
 - Is there a way to use visualization to explore for typosquatting attacks?
 - How should package metadata be used to search for potential typosquatters?
   The current version uses metadata crudely: pypi-scan simply changes the
