@@ -4,7 +4,7 @@ These are the main related functionalities that can be called in main.py
 """
 
 from filters import filter_by_package_name_len, whitelist
-from scrapers import get_all_packages, get_top_packages
+from scrapers import get_all_packages, get_top_packages, get_unpopular_packages
 from utils import (
     create_potential_squatter_names,
     create_suspicious_package_dict,
@@ -26,7 +26,7 @@ def mod_squatters(module, max_distance):
 
     """
     module_in_list = [module]
-    package_names = get_all_packages()
+    package_names = get_unpopular_packages()
     squat_candidates = create_suspicious_package_dict(
         package_names, module_in_list, max_distance
     )
@@ -36,8 +36,9 @@ def mod_squatters(module, max_distance):
     if len(squat_candidates[module]) == 0:
         print("No typosquatting candidates found.")
     else:
-        for i, candidate in enumerate(squat_candidates[module]):
-            print(str(i) + ": " + candidate)
+        print_suspicious_packages(squat_candidates)
+        # for i, candidate in enumerate(squat_candidates[module]):
+        #     print(str(i) + ": " + candidate)
 
 
 def names_to_defend(module_name):
@@ -68,7 +69,7 @@ def top_mods(max_distance, top_n, min_len, stored_json):
 
     """
     # Get list of potential typosquatters
-    package_names = get_all_packages()
+    package_names = get_unpopular_packages()
     top_packages = get_top_packages(top_n=top_n, stored=stored_json)
     filtered_package_list = filter_by_package_name_len(top_packages, min_len=min_len)
     squat_candidates = create_suspicious_package_dict(
@@ -93,6 +94,10 @@ def scan_recent(max_distance, save_new_list=False):
     """
     # Download current list of PyPI packages and convert to set
     current_packages_set = set(get_all_packages())
+
+    # Download current list of "unpopular" PyPI packages
+    unpopular_package_names = get_unpopular_packages()
+
     # If saving is requested, save new list with timestamped name
     if save_new_list == True:
         store_recent_scan_results(list(current_packages_set))
@@ -106,7 +111,7 @@ def scan_recent(max_distance, save_new_list=False):
 
     # Check each new package and see if it is a potential typosquatter
     squat_candidates = create_suspicious_package_dict(
-        current_packages_set, new_packages, max_distance
+        set(unpopular_package_names), new_packages, max_distance
     )
 
     # TODO: Consider adding in length to avoid checking short package names

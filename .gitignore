@@ -11,3 +11,4 @@ test_data/pypi*
 !package_lists/pypi-package-list-2020-07-03-01-12-38.json
 !results/README.md
 !package_lists/README.md
+temp/

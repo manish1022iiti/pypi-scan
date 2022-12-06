@@ -157,8 +157,8 @@ if __name__ == "__main__":
 
 def test(flag):
     if flag:
-        # mod_squatters("googleapis-common-protos", 7)
-        top_mods(0, 5, 5, False)
+        mod_squatters("boto3", 1)
+        top_mods(0, 50, 5, False)
         # names_to_defend("pandas")
 
 

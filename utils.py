@@ -17,7 +17,7 @@ from mrs_spellings import MrsWord
 from termcolor import colored
 
 import constants
-from filters import distance_calculations, homophone_attack_screen, order_attack_screen
+import filters
 from scrapers import get_metadata
 
 MAX_DISTANCE = constants.MAX_DISTANCE
@@ -66,10 +66,19 @@ def compare_metadata(pkg1, pkg2):
             # If atleast one of the packages does NOT have "info" key in its metadata,
             # assume something is fishy and conclude all fields are identical
             num_identical_fields = len(fields_to_compare)
+            break
 
-    # Categorize risk level based on count of identical fields
+    # check if both the packages are from the same Github repository
+    is_code_source_same = False
+    try:
+        if pkg1_metadata["info"]["project_urls"]["Source"] == pkg2_metadata["info"]["project_urls"]["Source"]:
+            is_code_source_same = True
+    except:
+        pass
+
+    # Categorize risk level: if one or more fields match, and the code source is NOT same
     risk_level = "no_risk"
-    if num_identical_fields >= 1:
+    if num_identical_fields >= 1 and not is_code_source_same:
         risk_level = "some_risk"
 
     return risk_level
@@ -97,17 +106,28 @@ def create_suspicious_package_dict(
         import time
         st = time.time()
 
-        # Check for misspelling attacks
-        close_packages = distance_calculations(top_package, all_packages, max_distance)
+        # Check for misspelling attacks based on Levenshtein distance
+        close_packages = filters.distance_calculations(top_package, all_packages, max_distance)
         # Check for confusion attcks
-        reverse_package = order_attack_screen(top_package, all_packages)
-        # If there actually is a reverse package squatter, add to list
-        if reverse_package:
-            close_packages.extend(reverse_package)
+        reverse_packages = filters.order_attack_screen(top_package, all_packages)
         # Check for homophone attack
-        homophone_packages = homophone_attack_screen(top_package, all_packages)
+        # homophone_packages = filters.homophone_attack_screen(top_package, all_packages)
+        # Check for misspelling attacks based on Qwerty distance
+        qwerty_close_packages = filters.get_qwerty_close_package_names(top_package, all_packages)
+        # Check for leetspeak package names
+        leetspeak_close_packages = filters.get_leetspeak_package_names(top_package, all_packages)
+        # Check for shifted by 1 package names
+        shifted_packages = filters.get_shifted_package_names(top_package, all_packages)
+        # Check for misinformation package names
+        misinfo_packages = filters.get_misinfo_close_names(top_package, all_packages)
 
-        suspicious_packages[top_package] = close_packages
+        # final list of package squatters
+        squatters = qwerty_close_packages + close_packages + reverse_packages + \
+                    leetspeak_close_packages + shifted_packages + misinfo_packages
+        # squatters = squatters + homophone_packages
+        squatters = list(set(squatters))
+
+        suspicious_packages[top_package] = squatters
 
         duration = time.time() - st
         print(f"{i + 1} / {len(top_packages)}: {top_package}, {duration} seconds")

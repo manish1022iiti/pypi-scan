@@ -15,6 +15,7 @@ import jsontree
 import constants
 
 TOP_N = constants.TOP_N
+TOP_5K = constants.NUM_POPULAR_PACKAGES
 
 
 def get_all_packages(page="https://pypi.org/simple/"):
@@ -53,6 +54,52 @@ def get_all_packages(page="https://pypi.org/simple/"):
     package_names = []
     for elem in soup.find_all("a"):  # Find all <a> tags
         package_names.append(elem.string)  # Get string inside a tag
+
+    # Return timestamp and package name list
+    return package_names
+
+
+def get_unpopular_packages(page="https://pypi.org/simple/", top_n=TOP_N):
+    """Download simple list of PyPI package names that are NOT popular.
+
+    pypi.org/simple conveniently lists all the names of current
+    packages. This function scrapes that listing and then places
+    the package names in a python list structure, and removes the
+    packages that are not popular.
+
+    Args:
+        page (str): webpage from which to download pypi package names
+
+    Returns:
+        list: package names on pypi
+        top_n: top n packages based on downloads that are to be removed from the result.
+    """
+    # Retrieve package name listing data from pypy
+
+    package_names = list()
+    try:
+        import pickle
+        with open("temp/all_packages_20221206.pickle", "rb") as f:
+            package_names = pickle.load(f)
+    except:
+        try:
+            pypi_package_page = requests.get(page)
+        except requests.exceptions.ConnectionError as e:
+            print("Internet connection issue. Check connection")
+            print(e)
+            sys.exit(1)
+
+        # Convert html to easily digestible format
+        soup = BeautifulSoup(pypi_package_page.text, "html.parser")
+
+        # Store package names in list
+        package_names = []
+        for elem in soup.find_all("a"):  # Find all <a> tags
+            package_names.append(elem.string)  # Get string inside a tag
+
+    # get top 5k packages and remove those from all packages list
+    top_packages = get_top_packages(top_n=TOP_5K)
+    package_names = list(set(package_names) - set(top_packages))
 
     # Return timestamp and package name list
     return package_names

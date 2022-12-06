@@ -6,6 +6,12 @@ data.
 
 import jellyfish
 import Levenshtein
+from mrs_spellings import MrsWord
+from urllib.request import urlopen
+import requests
+from bs4 import BeautifulSoup
+from typing import Dict, List
+import re
 
 import constants
 
@@ -27,6 +33,7 @@ def filter_by_package_name_len(package_list, min_len=MIN_LEN_PACKAGE_NAME):
 
 
 def __get_threshold_edit_distance(word_length):
+    return 1
     if word_length <= 5:
         return 1
     if word_length <= 10:
@@ -34,6 +41,152 @@ def __get_threshold_edit_distance(word_length):
     if word_length <= 15:
         return 3
     return 4
+
+
+def misinfo_name(package_name):
+    if ("python" in package_name):
+        words = package_name.replace("python", "py")
+
+    elif ("py" in package_name) and ("python" not in package_name):
+        words = package_name.replace("py", "python")
+
+    else:
+        words = None
+
+    return words
+
+
+def get_misinfo_close_names(package_of_interest, all_packages):
+    """Find packages that are close to the misinformaed package (py<->python).
+
+    """
+    candidate = misinfo_name(package_name=package_of_interest)
+
+    result = list()
+    if candidate and candidate in all_packages:
+        result.append(candidate)
+    return result
+
+
+def get_qwerty_close_package_names(package_of_interest, all_packages):
+    """Find packages that are close to the given package on QWERTY keyboard.
+
+    Note that this check might catch some packages not caught by Levenshtein distance
+    method.
+
+    """
+    candidates = MrsWord(package_of_interest).qwerty_swap()
+    candidates = set(" ".join(candidates).split(" "))
+    result = list(candidates.intersection(set(all_packages)))
+    return result
+
+
+def get_leetspeak_package_names(package_of_interest, all_packages):
+    mp = dict()
+    mp["o"] = "0"
+    mp["O"] = "0"
+    mp["l"] = "1"
+    mp["s"] = "5"
+    mp["S"] = "5"
+    candidates = list()
+    for k, v in mp.items():
+        cd = package_of_interest.replace(k, v)
+        if cd != package_of_interest:
+            candidates.append(cd)
+    result = list(set(candidates).intersection(set(all_packages)))
+    return result
+
+
+def get_shifted_package_names(package_of_interest, all_packages):
+    left_shift = {
+        "q": "  ",
+        "w": "q",
+        "e": "w",
+        "r": "e",
+        "t": "r",
+        "y": "t",
+        "u": "y",
+        "i": "u",
+        "o": "i",
+        "p": "o",
+        "a": "",
+        "s": "a",
+        "d": "s",
+        "f": "d",
+        "g": "f",
+        "h": "g",
+        "j": "h",
+        "k": "j",
+        "l": "k",
+        "z": "",
+        "x": "z",
+        "c": "x",
+        "v": "c",
+        "b": "v",
+        "n": "b",
+        "m": "n",
+        "1": "`",
+        "2": "1",
+        "3": "2",
+        "4": "3",
+        "5": "4",
+        "6": "5",
+        "7": "6",
+        "8": "7",
+        "9": "8",
+        "0": "9"
+    }
+
+    right_shift = {
+        "q": "w",
+        "w": "e",
+        "e": "r",
+        "r": "t",
+        "t": "y",
+        "y": "u",
+        "u": "i",
+        "i": "o",
+        "o": "p",
+        "p": "[",
+        "a": "s",
+        "s": "d",
+        "d": "f",
+        "f": "g",
+        "g": "h",
+        "h": "j",
+        "j": "k",
+        "k": "l",
+        "l": ";",
+        "z": "x",
+        "x": "c",
+        "c": "v",
+        "v": "b",
+        "b": "n",
+        "n": "m",
+        "m": ",",
+        "1": "2",
+        "2": "3",
+        "3": "4",
+        "4": "5",
+        "5": "6",
+        "6": "7",
+        "7": "8",
+        "8": "9",
+        "9": "0",
+        "0": "-"
+    }
+
+    lshift = list(package_of_interest)
+    rshift = list(package_of_interest)
+    for i in range(len(package_of_interest)):
+        lshift[i] = left_shift.get(lshift[i], lshift[i])
+        rshift[i] = right_shift.get(rshift[i], rshift[i])
+
+    lshift = "".join(lshift)
+    rshift = "".join(rshift)
+
+    result = list(set([lshift, rshift]).intersection(set(all_packages)))
+    return result
 
 
 def distance_calculations(package_of_interest, all_packages, max_distance=MAX_DISTANCE):
@@ -184,7 +337,8 @@ def homophone_attack_screen(package_of_interest, all_packages):
     homophone_package_names = []
 
     # Calculate metaphone code for package of interest, only once
-    package_of_interest_metaphone = jellyfish.metaphone(package_of_interest)
+    # package_of_interest_metaphone = jellyfish.metaphone(package_of_interest)
+    package_of_interest_metaphone = jellyfish.match_rating_codex(package_of_interest)
 
     # Loop thru all package names
     for package in all_packages:
@@ -195,7 +349,8 @@ def homophone_attack_screen(package_of_interest, all_packages):
 
         # Compare package metaphone code to the metaphone code of the
         # package of interest
-        if jellyfish.metaphone(package) == package_of_interest_metaphone:
+        # if jellyfish.metaphone(package) == package_of_interest_metaphone:
+        if jellyfish.match_rating_codex(package) == package_of_interest_metaphone:
             homophone_package_names.append(package)
 
     return homophone_package_names
